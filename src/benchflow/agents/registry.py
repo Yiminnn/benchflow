@@ -95,6 +95,10 @@ _OPENCLAW_SHIM = (Path(__file__).parent / "openclaw_acp_shim.py").read_text()
 # Path to the Pi launch wrapper (bridges BENCHFLOW_PROVIDER_* → Pi config)
 _PI_LAUNCHER = (Path(__file__).parent / "pi_acp_launcher.py").read_text()
 
+# Path to the codex-acp launch wrapper (bridges BENCHFLOW_PROVIDER_* →
+# $CODEX_HOME/config.toml — Codex CLI does not honor OPENAI_BASE_URL)
+_CODEX_ACP_LAUNCHER = (Path(__file__).parent / "codex_acp_launcher.py").read_text()
+
 
 @dataclass
 class CredentialFile:
@@ -237,6 +241,13 @@ AGENTS: dict[str, AgentConfig] = {
         launch_cmd="python3 /usr/local/bin/openclaw-acp-shim",
         protocol="acp",
         requires_env=[],  # inferred from --model at runtime
+        # Mirror BENCHFLOW_PROVIDER_* into agent-native vars so the shim's
+        # set_model handler and setup_custom_provider path see them.
+        env_mapping={
+            "BENCHFLOW_PROVIDER_BASE_URL": "OPENAI_BASE_URL",
+            "BENCHFLOW_PROVIDER_API_KEY": "OPENAI_API_KEY",
+            "BENCHFLOW_PROVIDER_NAME": "BENCHFLOW_PROVIDER_NAME",
+        },
         home_dirs=[".openclaw"],
     ),
     "codex-acp": AgentConfig(
@@ -247,15 +258,24 @@ AGENTS: dict[str, AgentConfig] = {
             f"{_NODE_INSTALL} && "
             "( command -v codex-acp >/dev/null 2>&1 || "
             "npm install -g @zed-industries/codex-acp@latest >/dev/null 2>&1 ) && "
-            "command -v codex-acp >/dev/null 2>&1"
+            "command -v codex-acp >/dev/null 2>&1 && "
+            # Deploy launcher that writes $CODEX_HOME/config.toml from
+            # BENCHFLOW_PROVIDER_* env vars before exec-ing codex-acp.
+            # Required because Codex CLI ignores OPENAI_BASE_URL env var.
+            + _install_python_script(
+                "/usr/local/bin/codex-acp-launcher", _CODEX_ACP_LAUNCHER
+            )
         ),
-        launch_cmd="codex-acp",
+        launch_cmd="python3 /usr/local/bin/codex-acp-launcher",
         protocol="acp",
         requires_env=["OPENAI_API_KEY"],
         api_protocol="openai-completions",
         env_mapping={
             "BENCHFLOW_PROVIDER_BASE_URL": "OPENAI_BASE_URL",
             "BENCHFLOW_PROVIDER_API_KEY": "OPENAI_API_KEY",
+            # The launcher consumes BENCHFLOW_PROVIDER_NAME directly; mirror
+            # it here so the var also reaches any post-launch subprocesses.
+            "BENCHFLOW_PROVIDER_NAME": "BENCHFLOW_PROVIDER_NAME",
         },
         credential_files=[
             CredentialFile(

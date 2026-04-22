@@ -304,28 +304,39 @@ def _find_and_setup_provider(model: str) -> str | None:
             except KeyError:
                 pass  # fall through to env var path
             else:
-                if cfg.auth_type == "adc":
-                    try:
-                        api_key = _get_adc_token()
-                    except Exception:
-                        logger.debug(
-                            "ADC token acquisition failed for %s",
-                            provider_name,
-                            exc_info=True,
-                        )
-                        return None
-                elif cfg.auth_type == "none":
-                    api_key = ""
-                elif cfg.auth_env:
-                    api_key = env.get(cfg.auth_env, "")
-                    if not api_key:
-                        return None
+                # Providers with empty registry base_url (vllm,
+                # openai-compatible) require the user to supply the URL via
+                # BENCHFLOW_PROVIDER_BASE_URL. Honor that here so we don't
+                # register an unusable empty endpoint.
+                if not base_url:
+                    base_url = env.get("BENCHFLOW_PROVIDER_BASE_URL", "")
+                if not base_url:
+                    pass  # nothing to register; fall through to env var path
                 else:
-                    return None
-                setup_custom_provider(
-                    provider_name, base_url, api_key, cfg.api_protocol, cfg.models
-                )
-                return provider_name
+                    if cfg.auth_type == "adc":
+                        try:
+                            api_key = _get_adc_token()
+                        except Exception:
+                            logger.debug(
+                                "ADC token acquisition failed for %s",
+                                provider_name,
+                                exc_info=True,
+                            )
+                            return None
+                    elif cfg.auth_type == "none":
+                        api_key = ""
+                    elif cfg.auth_env:
+                        api_key = env.get(cfg.auth_env, "") or env.get(
+                            "BENCHFLOW_PROVIDER_API_KEY", ""
+                        )
+                        if not api_key:
+                            return None
+                    else:
+                        return None
+                    setup_custom_provider(
+                        provider_name, base_url, api_key, cfg.api_protocol, cfg.models
+                    )
+                    return provider_name
     except ImportError:
         logger.debug("benchflow.agents.providers not available, using env var fallback")
 
