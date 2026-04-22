@@ -132,6 +132,45 @@ PROVIDERS: dict[str, ProviderConfig] = {
         api_protocol="openai-completions",
         auth_type="none",
     ),
+    # Generic OAI-compatible relay/proxy (user-supplied base_url + API key).
+    # Use for gateway services like gptsapi.net, OpenRouter, or any third-
+    # party endpoint that speaks the OpenAI Chat Completions API.
+    "openai-compatible": ProviderConfig(
+        name="openai-compatible",
+        base_url="",  # user-supplied via --ae BENCHFLOW_PROVIDER_BASE_URL=...
+        api_protocol="openai-completions",
+        auth_type="api_key",
+        auth_env="OPENAI_API_KEY",
+    ),
+    # ── Native Chinese-model providers (OpenAI-compatible endpoints) ──
+    "qwen": ProviderConfig(
+        name="qwen",
+        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        api_protocol="openai-completions",
+        auth_type="api_key",
+        auth_env="DASHSCOPE_API_KEY",
+    ),
+    "moonshot": ProviderConfig(
+        name="moonshot",
+        base_url="https://api.moonshot.cn/v1",
+        api_protocol="openai-completions",
+        auth_type="api_key",
+        auth_env="MOONSHOT_API_KEY",
+    ),
+    "minimax": ProviderConfig(
+        name="minimax",
+        base_url="https://api.minimaxi.com/v1",
+        api_protocol="openai-completions",
+        auth_type="api_key",
+        auth_env="MINIMAX_API_KEY",
+    ),
+    "deepseek": ProviderConfig(
+        name="deepseek",
+        base_url="https://api.deepseek.com/v1",
+        api_protocol="openai-completions",
+        auth_type="api_key",
+        auth_env="DEEPSEEK_API_KEY",
+    ),
     # ── Custom providers (need explicit endpoint config in agent shims) ──
     "zai": ProviderConfig(
         name="zai",
