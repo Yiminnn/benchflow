@@ -14,9 +14,16 @@ is unset, the wrapper is a no-op pass-through and codex-acp uses its
 built-in OpenAI provider as before.
 
 Wire protocol selection:
-  - Default: "chat" (works for vLLM, OpenRouter, most OAI-compat relays)
-  - Set CODEX_WIRE_API=responses for endpoints that mimic the OpenAI
-    Responses API (e.g. gptsapi.net, Azure-Responses).
+  - Default: "responses". Recent @zed-industries/codex-acp wrapper
+    versions reject `wire_api = "chat"` even though raw Codex CLI still
+    accepts it. Defaulting to "responses" matches what codex-acp expects
+    today and what the official OpenAI provider already uses.
+  - Set CODEX_WIRE_API=chat to force Chat Completions wire format.
+    Useful for older codex-acp versions, or for direct relay endpoints
+    (vLLM, OpenRouter) when paired with a codex-acp build that still
+    accepts chat. Note: most self-hosted Chat-only servers (vLLM, etc.)
+    are better served by `pi-acp` than codex-acp — pi speaks Chat
+    Completions natively and parses standard `tool_calls` arrays.
 """
 
 import json
@@ -38,9 +45,11 @@ def main() -> None:
     base_url = _resolve("BENCHFLOW_PROVIDER_BASE_URL", "OPENAI_BASE_URL")
     api_key = _resolve("BENCHFLOW_PROVIDER_API_KEY", "OPENAI_API_KEY")
     provider_name = _resolve("BENCHFLOW_PROVIDER_NAME") or "custom"
-    wire_api = _resolve("CODEX_WIRE_API") or (
-        "responses" if provider_name == "openai" else "chat"
-    )
+    # Default to "responses" because @zed-industries/codex-acp dropped
+    # `wire_api = "chat"` support in recent releases. Users on older
+    # builds (or routing to a Chat-only relay through a custom codex
+    # fork) can override with CODEX_WIRE_API=chat.
+    wire_api = _resolve("CODEX_WIRE_API") or "responses"
 
     if base_url:
         codex_home = pathlib.Path(
