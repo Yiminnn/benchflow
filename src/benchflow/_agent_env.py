@@ -28,7 +28,20 @@ logger = logging.getLogger(__name__)
 
 
 def auto_inherit_env(agent_env: dict[str, str]) -> None:
-    """Copy well-known API keys from host os.environ into agent_env."""
+    """Copy well-known API keys and provider config from host os.environ.
+
+    Inherits three classes of env vars:
+      * Well-known API keys (Anthropic, OpenAI, Google, Gemini).
+      * Per-provider auth_env / url_params declared in PROVIDERS.
+      * BENCHFLOW_PROVIDER_* (the documented user-facing routing contract)
+        and a few agent-specific toggles that influence routing
+        (CODEX_WIRE_API for the codex-acp launcher).
+
+    Without the third group, users who set BENCHFLOW_PROVIDER_BASE_URL in
+    their shell would see it silently dropped — resolve_provider_env's
+    setdefault would then write the empty registry default for
+    user-supplied providers like vllm/ and openai-compatible/.
+    """
     from benchflow.agents.providers import PROVIDERS
 
     keys = {
@@ -42,6 +55,17 @@ def auto_inherit_env(agent_env: dict[str, str]) -> None:
         "GOOGLE_CLOUD_LOCATION",
         "LLM_API_KEY",
         "LLM_BASE_URL",
+        # Documented user-facing routing contract — see CONTRIBUTING.md.
+        "BENCHFLOW_PROVIDER_BASE_URL",
+        "BENCHFLOW_PROVIDER_API_KEY",
+        "BENCHFLOW_PROVIDER_NAME",
+        "BENCHFLOW_PROVIDER_PROTOCOL",
+        "BENCHFLOW_PROVIDER_MODEL",
+        "BENCHFLOW_PROVIDER_MODELS",
+        # Codex-acp launcher reads this to pick wire_api when writing
+        # $CODEX_HOME/config.toml ("chat" by default; "responses" for
+        # endpoints that mimic the OpenAI Responses API).
+        "CODEX_WIRE_API",
     }
     for cfg in PROVIDERS.values():
         if cfg.auth_env:
