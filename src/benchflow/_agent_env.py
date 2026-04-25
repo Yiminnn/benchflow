@@ -55,6 +55,15 @@ def auto_inherit_env(agent_env: dict[str, str]) -> None:
         "GOOGLE_CLOUD_LOCATION",
         "LLM_API_KEY",
         "LLM_BASE_URL",
+        # Agent-native base-URL env vars. The Anthropic, OpenAI, and
+        # Gemini SDKs all consume these directly. Without them in the
+        # allowlist, users following the upstream SDK conventions
+        # (`export ANTHROPIC_BASE_URL=https://my-relay/...`) saw their
+        # endpoint silently dropped — agents then routed to the official
+        # provider with relay-issued keys, returning 403.
+        "ANTHROPIC_BASE_URL",
+        "OPENAI_BASE_URL",
+        "GEMINI_API_BASE_URL",
         # Documented user-facing routing contract — see CONTRIBUTING.md.
         "BENCHFLOW_PROVIDER_BASE_URL",
         "BENCHFLOW_PROVIDER_API_KEY",
@@ -63,8 +72,8 @@ def auto_inherit_env(agent_env: dict[str, str]) -> None:
         "BENCHFLOW_PROVIDER_MODEL",
         "BENCHFLOW_PROVIDER_MODELS",
         # Codex-acp launcher reads this to pick wire_api when writing
-        # $CODEX_HOME/config.toml ("chat" by default; "responses" for
-        # endpoints that mimic the OpenAI Responses API).
+        # $CODEX_HOME/config.toml ("responses" by default; "chat" for
+        # older codex-acp builds or chat-only relays).
         "CODEX_WIRE_API",
     }
     for cfg in PROVIDERS.values():
